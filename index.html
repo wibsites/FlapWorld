@@ -3,158 +3,266 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FlapWorld: Global Pro</title>
+    <title>Flapworld</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --glass: rgba(15, 23, 42, 0.95); --border: rgba(255, 255, 255, 0.1); }
-        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Cairo', sans-serif; touch-action: none; user-select: none; }
+        :root { 
+            --glass: rgba(10, 15, 30, 0.85); 
+            --border: rgba(255, 255, 255, 0.1); 
+            --accent: #facc15;
+        }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #010409; 
+            font-family: 'Cairo', sans-serif; 
+            touch-action: none; 
+            user-select: none; 
+            color: white; 
+        }
         body.en { font-family: 'Fredoka', sans-serif; }
-        canvas { display: block; width: 100vw; height: 100vh; background: #000; }
+        canvas { display: block; width: 100vw; height: 100vh; }
         
-        .ui-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(12px); }
-        .hidden-screen { opacity: 0; pointer-events: none; transform: scale(0.98); }
-        .glass-card { background: var(--glass); border: 1px solid var(--border); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7); border-radius: 2.5rem; }
+        .ui-screen { 
+            position: absolute; 
+            inset: 0; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 100; 
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1); 
+            backdrop-filter: blur(12px); 
+        }
+        .hidden-screen { opacity: 0; pointer-events: none; transform: scale(0.9); }
+        .glass-card { 
+            background: var(--glass); 
+            border: 1px solid var(--border); 
+            border-radius: 2.5rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+        }
         
-        .btn-action { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-bottom: 5px solid rgba(0,0,0,0.3); }
-        .btn-action:active { transform: translateY(2px); border-bottom-width: 0; }
+        .btn-action { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
+        .btn-action:active { transform: scale(0.95); }
         
-        #toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%) translateY(-150%); transition: 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        #toast { 
+            position: absolute; 
+            top: 30px; 
+            left: 50%; 
+            transform: translateX(-50%) translateY(-150%); 
+            transition: 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+        }
         #toast.show { transform: translateX(-50%) translateY(0); }
         
-        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .float-logo { animation: float 4s ease-in-out infinite; }
+
+        .score-pop { animation: pop 0.3s ease-out; }
+        @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); color: var(--accent); } 100% { transform: scale(1); } }
+        
+        .tutorial-item { animation: slideUp 0.6s ease-out forwards; opacity: 0; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- واجهة HUD المصغرة -->
-    <div id="hud" class="hidden absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none z-10">
-        <div class="flex flex-col items-start gap-1">
-            <div class="text-6xl font-black text-white drop-shadow-2xl select-none" id="scoreDisplay" style="-webkit-text-stroke: 1.5px rgba(0,0,0,0.5);">0</div>
-            <div id="locationHud" class="bg-black/30 backdrop-blur-md px-3 py-1 rounded-full text-white text-[10px] font-bold border border-white/10 flex items-center gap-2">
-                <span id="hudFlag">☀️</span> <span id="hudLocName">Spring Valley</span>
+    <!-- Tutorial Overlay -->
+    <div id="tutorialOverlay" class="hidden-screen ui-screen z-[150] bg-black/60">
+        <div class="glass-card p-10 w-80 text-center">
+            <h2 class="text-3xl font-black text-yellow-400 mb-8" data-t="howToPlay">كيفية اللعب</h2>
+            <div class="space-y-6 text-right" dir="rtl">
+                <div class="tutorial-item flex items-center gap-4" style="animation-delay: 0.1s">
+                    <span class="text-3xl">👆</span>
+                    <span class="text-white font-bold" data-t="t1">انقر على الشاشة للتحليق</span>
+                </div>
+                <div class="tutorial-item flex items-center gap-4" style="animation-delay: 0.2s">
+                    <span class="text-3xl">🚫</span>
+                    <span class="text-white font-bold" data-t="t2">لا تصطدم بالأعمدة</span>
+                </div>
+                <div class="tutorial-item flex items-center gap-4" style="animation-delay: 0.3s">
+                    <span class="text-3xl">⚠️</span>
+                    <span class="text-white font-bold" data-t="t3">لا تسقط خارج الشاشة</span>
+                </div>
+            </div>
+            <button onclick="UI.closeTutorial()" class="mt-10 w-full bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-lg" data-t="gotIt">فهمت!</button>
+        </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-10">
+        <div class="flex flex-col gap-2">
+            <div class="text-7xl font-black text-white drop-shadow-2xl transition-transform" id="scoreDisplay">0</div>
+            <div id="locationHud" class="bg-black/40 backdrop-blur-xl px-5 py-2 rounded-full border border-white/10 flex items-center gap-3">
+                <span id="hudFlag" class="text-2xl">☀️</span> 
+                <span id="hudLocName" class="text-xs font-bold tracking-widest uppercase">Spring Valley</span>
             </div>
         </div>
-        <div class="glass-card px-4 py-1.5 text-center border-yellow-500/20">
-            <div class="text-[9px] text-yellow-400 font-bold uppercase" data-t="bestScore">الأفضل</div>
-            <div class="text-xl font-black text-white" id="bestScoreDisplay">0</div>
+        <div class="glass-card px-6 py-3 text-center border-yellow-500/30">
+            <div class="text-[10px] text-yellow-400 font-black uppercase tracking-widest" data-t="bestScore">الأفضل</div>
+            <div class="text-2xl font-black text-white" id="bestScoreDisplay">0</div>
         </div>
     </div>
 
-    <!-- نظام التنبيهات -->
-    <div id="toast" class="z-[150] glass-card px-8 py-3 flex items-center gap-4 border-l-4 border-yellow-400">
-        <span id="toastIcon" class="text-2xl">🌍</span>
-        <span id="toastMsg" class="text-white font-bold text-lg">وصلت لوجهة جديدة!</span>
+    <!-- Notifications -->
+    <div id="toast" class="z-[200] glass-card px-8 py-4 flex items-center gap-5 border-l-4 border-yellow-400">
+        <span id="toastIcon" class="text-3xl">🌍</span>
+        <div class="flex flex-col">
+            <span id="toastMsg" class="text-white font-black text-lg">وجهة جديدة!</span>
+        </div>
     </div>
 
-    <!-- القائمة الرئيسية -->
+    <!-- Main Menu -->
     <div id="mainMenu" class="ui-screen">
-        <div class="mb-10 text-center">
-            <h1 class="text-7xl font-black text-white tracking-tighter mb-2 drop-shadow-2xl">FLAP<span class="text-yellow-400">WORLD</span></h1>
-            <div class="flex gap-2 justify-center">
-                <span class="bg-blue-500/20 text-blue-300 text-[10px] px-3 py-1 rounded-full border border-blue-500/20 font-bold uppercase tracking-widest">Global Pro V11</span>
-            </div>
+        <div class="mb-12 text-center float-logo flex flex-col items-center">
+            <h1 class="text-7xl font-black tracking-tighter text-white uppercase italic">Flap<span class="text-yellow-400">world</span></h1>
+            <div class="mt-4 px-4 py-1 bg-white/10 rounded-full text-[10px] font-bold tracking-widest uppercase opacity-40">Global Tour Edition</div>
         </div>
         
-        <div class="glass-card p-10 w-80 flex flex-col gap-4">
-            <button onclick="Game.start()" class="btn-action w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-2xl text-xl shadow-xl" data-t="playNow">العب الآن</button>
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="UI.showSkins()" class="btn-action bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-2xl text-xs" data-t="hangar">الشخصيات</button>
-                <button onclick="UI.showSettings()" class="btn-action bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-2xl text-xs" data-t="settings">الإعدادات</button>
+        <div class="w-80 flex flex-col gap-4">
+            <button onclick="Game.handleMainAction()" class="btn-action bg-yellow-400 hover:bg-yellow-300 text-black font-black py-6 rounded-3xl text-2xl shadow-2xl shadow-yellow-400/30" data-t="playNow">انطلاق</button>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="UI.showSkins()" class="btn-action glass-card hover:bg-white/10 text-white font-bold py-5 rounded-3xl text-xs uppercase tracking-widest" data-t="hangar">الأبطال</button>
+                <button onclick="UI.showSettings()" class="btn-action glass-card hover:bg-white/10 text-white font-bold py-5 rounded-3xl text-xs uppercase tracking-widest" data-t="settings">الإعدادات</button>
             </div>
         </div>
     </div>
 
-    <!-- متجر الشخصيات -->
+    <!-- Skins Shop -->
     <div id="skinsScreen" class="ui-screen hidden-screen">
-        <div class="glass-card p-8 w-[400px] max-h-[80vh] flex flex-col">
-            <h2 class="text-2xl font-black text-white mb-6 flex justify-between items-center border-b border-white/10 pb-4">
-                <span data-t="chooseBird">اختر طائرك</span>
-                <span class="text-yellow-400 text-sm" id="skinPts">0 PTS</span>
-            </h2>
-            <div id="skinsGrid" class="custom-scroll overflow-y-auto flex-1 space-y-3 pr-2"></div>
-            <button onclick="UI.showMenu()" class="mt-6 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl shadow-lg" data-t="back">رجوع</button>
+        <div class="glass-card p-8 w-[95%] max-w-md max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
+                <h2 class="text-3xl font-black text-white" data-t="chooseBird">الأبطال</h2>
+                <div class="flex flex-col items-end">
+                    <span class="text-[10px] text-white/40 font-bold uppercase" data-t="best">أفضل نتيجة</span>
+                    <span class="text-yellow-400 text-xl font-black" id="skinPts">0</span>
+                </div>
+            </div>
+            <div id="skinsGrid" class="custom-scroll overflow-y-auto flex-1 space-y-4 pr-3"></div>
+            <button onclick="UI.showMenu()" class="mt-8 bg-white/5 hover:bg-white/10 text-white font-black py-5 rounded-3xl transition-all" data-t="back">إغلاق</button>
         </div>
     </div>
 
-    <!-- الإعدادات -->
+    <!-- Settings -->
     <div id="settingsScreen" class="ui-screen hidden-screen">
-        <div class="glass-card p-8 w-80">
-            <h2 class="text-2xl font-black text-white mb-8 text-center" data-t="settings">الإعدادات</h2>
-            <div class="space-y-6">
+        <div class="glass-card p-10 w-80">
+            <h2 class="text-3xl font-black text-white mb-12 text-center tracking-tighter" data-t="settings">الإعدادات</h2>
+            <div class="space-y-10">
                 <div class="flex justify-between items-center">
-                    <span class="text-white font-bold" data-t="language">اللغة</span>
-                    <button onclick="Lang.toggle()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-1.5 rounded-xl font-black text-xs transition" id="langBtn">العربية</button>
+                    <span class="text-white/60 font-bold text-sm uppercase tracking-widest" data-t="language">اللغة</span>
+                    <button onclick="Lang.toggle()" class="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-full font-black text-xs" id="langBtn">AR</button>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-white font-bold" data-t="sfx">المؤثرات</span>
-                    <button id="sfxToggle" onclick="AudioSys.toggleSFX()" class="w-12 h-6 bg-emerald-500 rounded-full relative transition-all shadow-inner">
-                        <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full transition-all" id="sfxKnob"></div>
+                    <span class="text-white/60 font-bold text-sm uppercase tracking-widest" data-t="sfx">الصوت</span>
+                    <button id="sfxToggle" onclick="AudioSys.toggleSFX()" class="w-16 h-8 bg-white/10 rounded-full relative transition-all">
+                        <div class="absolute left-1 top-1 w-6 h-6 bg-white rounded-full transition-all shadow-md" id="sfxKnob"></div>
                     </button>
                 </div>
             </div>
-            <button onclick="UI.showMenu()" class="mt-10 w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl shadow-lg" data-t="save">حفظ</button>
+            <button onclick="UI.showMenu()" class="mt-12 w-full bg-yellow-400 text-black font-black py-5 rounded-3xl shadow-xl shadow-yellow-400/20" data-t="save">حفظ</button>
         </div>
     </div>
 
-    <!-- شاشة الخسارة -->
+    <!-- Game Over -->
     <div id="gameOverScreen" class="ui-screen hidden-screen">
-        <div class="glass-card p-10 w-80 text-center border-b-[10px] border-red-500">
-            <h2 class="text-5xl font-black text-red-500 mb-8 drop-shadow-lg" data-t="crashed">تحطمت!</h2>
-            <div class="flex gap-4 mb-8">
-                <div class="flex-1 bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <div class="text-[9px] text-slate-400 font-bold uppercase" data-t="score">النتيجة</div>
+        <div class="glass-card p-10 w-80 text-center border-t-[12px] border-yellow-400">
+            <h2 class="text-5xl font-black text-white mb-2 uppercase tracking-tighter" data-t="crashed">تحطم!</h2>
+            <p class="text-white/40 text-[10px] font-bold mb-12 tracking-[0.3em] uppercase">هبوط اضطراري</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-12">
+                <div class="bg-white/5 p-5 rounded-[2rem] border border-white/10">
+                    <div class="text-[9px] text-white/40 font-bold uppercase mb-2" data-t="score">المسافة</div>
                     <div class="text-4xl font-black text-white" id="goScore">0</div>
                 </div>
-                <div class="flex-1 bg-white/5 p-4 rounded-2xl border border-white/10">
-                    <div class="text-[9px] text-slate-400 font-bold uppercase" data-t="best">الأفضل</div>
+                <div class="bg-white/5 p-5 rounded-[2rem] border border-white/10">
+                    <div class="text-[9px] text-white/40 font-bold uppercase mb-2" data-t="best">الرقم</div>
                     <div class="text-4xl font-black text-yellow-400" id="goBest">0</div>
                 </div>
             </div>
-            <div class="flex flex-col gap-2">
-                <button onclick="Game.start()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-2xl active:scale-95 transition-all" data-t="retry">إعادة المحاولة</button>
-                <button onclick="UI.showMenu()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all" data-t="home">الرئيسية</button>
+            
+            <div class="flex flex-col gap-4">
+                <button onclick="Game.start()" class="bg-yellow-400 hover:bg-yellow-300 text-black font-black py-6 rounded-3xl text-xl shadow-2xl shadow-yellow-400/20 active:scale-95 transition-all" data-t="retry">إعادة المحاولة</button>
+                <button onclick="UI.showMenu()" class="bg-white/5 hover:bg-white/10 text-white font-bold py-5 rounded-3xl text-xs tracking-widest uppercase" data-t="home">القائمة الرئيسية</button>
             </div>
         </div>
     </div>
 
-    <script>
-        // --- Utilities ---
-        const hexToRgb = hex => {
-            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 15, g: 23, b: 42 };
-        };
-        const lerpColor = (c1, c2, t) => {
-            const r1 = hexToRgb(c1), r2 = hexToRgb(c2);
-            const r = Math.round(r1.r + (r2.r - r1.r) * t), g = Math.round(r1.g + (r2.g - r1.g) * t), b = Math.round(r1.b + (r2.b - r1.b) * t);
-            return `rgb(${r},${g},${b})`;
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'flapworld-global-tour-restore';
+
+        let user = null;
+
+        onAuthStateChanged(auth, (u) => {
+            user = u;
+            if (user) syncData();
+        });
+
+        const initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
         };
 
-        // --- Localization ---
+        const syncData = async () => {
+            if (!user) return;
+            const userDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'profile');
+            const snap = await getDoc(userDoc);
+            if (snap.exists()) {
+                const data = snap.data();
+                Game.best = data.bestScore || 0;
+                Game.bird.skin = data.selectedSkin || 'canary';
+                UI.updateBestDisplays();
+            }
+        };
+
+        const saveProgress = async () => {
+            if (!user) return;
+            const userDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'profile');
+            await setDoc(userDoc, {
+                bestScore: Game.best,
+                selectedSkin: Game.bird.skin,
+                lastUpdated: Date.now()
+            }, { merge: true });
+        };
+
         const Lang = {
             curr: 'ar',
             dict: {
                 ar: {
-                    bestScore: "الأفضل", playNow: "العب الآن", hangar: "الشخصيات", settings: "الإعدادات",
-                    language: "اللغة", sfx: "المؤثرات", save: "حفظ", crashed: "تحطمت!", score: "النتيجة", best: "الأفضل", retry: "إعادة المحاولة", home: "الرئيسية",
-                    back: "رجوع", chooseBird: "اختر طائرك", unlockAt: "يفتح عند ", available: "متاح", location: "أهلاً بك في "
+                    bestScore: "الأفضل", playNow: "انطلاق", hangar: "الأبطال", settings: "الإعدادات",
+                    language: "اللغة", sfx: "الصوت", save: "حفظ", crashed: "تحطم!", score: "المسافة", best: "الرقم القياسي", retry: "إعادة التحليق", home: "القائمة",
+                    back: "رجوع", chooseBird: "اختر بطلك", unlockAt: "يفتح عند ", available: "متاح",
+                    howToPlay: "كيفية اللعب", t1: "انقر للتحليق للأعلى", t2: "تجنب الاصطدام بالأعمدة", t3: "تجنب السقوط للأسفل", gotIt: "انطلاق!"
                 },
                 en: {
-                    bestScore: "Best", playNow: "Play Now", hangar: "Characters", settings: "Settings",
-                    language: "Language", sfx: "SFX", save: "Save", crashed: "Crashed!", score: "Score", best: "Best", retry: "Retry", home: "Home",
-                    back: "Back", chooseBird: "Choose Hero", unlockAt: "Unlocks at ", available: "Available", location: "Welcome to "
+                    bestScore: "BEST", playNow: "START", hangar: "HEROES", settings: "CONFIG",
+                    language: "Language", sfx: "SFX", save: "SAVE", crashed: "CRASHED!", score: "SCORE", best: "RECORD", retry: "REDEPLOY", home: "BASE",
+                    back: "BACK", chooseBird: "SELECT HERO", unlockAt: "Unlock at ", available: "READY",
+                    howToPlay: "How to Play", t1: "Click to fly up", t2: "Don't hit the pipes", t3: "Don't fall down", gotIt: "Let's go!"
                 }
             },
-            init() { const saved = localStorage.getItem('fw_lang'); if(saved) this.set(saved); },
+            init() { const saved = localStorage.getItem('fw_lang_v10'); if(saved) this.set(saved); },
             toggle() { this.set(this.curr === 'ar' ? 'en' : 'ar'); AudioSys.play(600, 'sine', 0.1); },
             set(c) {
-                this.curr = c; localStorage.setItem('fw_lang', c);
+                this.curr = c; localStorage.setItem('fw_lang_v10', c);
                 document.getElementById('htmlTag').dir = c === 'ar' ? 'rtl' : 'ltr';
                 document.body.classList.toggle('en', c !== 'ar');
-                document.getElementById('langBtn').innerText = c === 'ar' ? 'العربية' : 'English';
+                document.getElementById('langBtn').innerText = c === 'ar' ? 'AR' : 'EN';
                 document.querySelectorAll('[data-t]').forEach(el => {
                     const key = el.getAttribute('data-t');
                     if(this.dict[c][key]) el.innerText = this.dict[c][key];
@@ -162,26 +270,29 @@
             }
         };
 
-        const Storage = { get: (k, d) => JSON.parse(localStorage.getItem(k)) || d, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
-
         const AudioSys = {
             ctx: null, settings: { sfx: true },
             init() {
-                this.settings = Storage.get('fw_audio_vPro', { sfx: true });
-                if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.settings = JSON.parse(localStorage.getItem('fw_audio_v10')) || { sfx: true };
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 this.updateUI();
             },
-            toggleSFX() { this.settings.sfx = !this.settings.sfx; Storage.set('fw_audio_vPro', this.settings); this.play(600, 'sine', 0.1); this.updateUI(); },
+            toggleSFX() { 
+                this.settings.sfx = !this.settings.sfx; 
+                localStorage.setItem('fw_audio_v10', JSON.stringify(this.settings)); 
+                this.play(600, 'sine', 0.1); 
+                this.updateUI(); 
+            },
             updateUI() {
                 const sk = document.getElementById('sfxKnob');
                 const st = document.getElementById('sfxToggle');
                 if(!st) return;
-                st.className = `w-12 h-6 rounded-full relative transition-all ${this.settings.sfx?'bg-emerald-500':'bg-slate-600'}`;
-                sk.style.right = (this.settings.sfx && Lang.curr === 'ar') || (!this.settings.sfx && Lang.curr === 'en') ? '4px' : '28px';
+                st.style.backgroundColor = this.settings.sfx ? '#facc15' : 'rgba(255,255,255,0.1)';
+                sk.style.left = this.settings.sfx ? '36px' : '4px';
+                sk.style.backgroundColor = this.settings.sfx ? '#000' : '#fff';
             },
-            play(f, t, d, v=0.1) {
+            play(f, t, d, v=0.08) {
                 if(!this.settings.sfx || !this.ctx) return;
-                if(this.ctx.state === 'suspended') this.ctx.resume();
                 const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
                 o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
                 g.gain.setValueAtTime(v, this.ctx.currentTime);
@@ -190,293 +301,177 @@
             }
         };
 
-        // --- محرك الرسم الفني ---
         const Renderer = {
-            // رسم الجناح الصغير في منتصف الجسم
-            drawSleekWing(ctx, color, wingMove, x, y, vel) {
+            drawBird(ctx, skin, frames, vel) {
                 ctx.save();
-                ctx.translate(x, y);
-                const wingRotation = wingMove * (1 + Math.min(0.5, Math.abs(vel) * 0.1));
-                ctx.rotate(wingRotation);
-                
-                // تدرج لوني
-                let wingGrad = ctx.createLinearGradient(-30, -15, 5, 15);
-                wingGrad.addColorStop(0, color);
-                wingGrad.addColorStop(0.5, lerpColor(color, "#ffffff", 0.3));
-                wingGrad.addColorStop(1, lerpColor(color, "#000000", 0.15));
-                
-                ctx.fillStyle = wingGrad;
-                ctx.beginPath();
-                // جناح صغير محسن
-                ctx.moveTo(0, 0);
-                
-                // الحافة الأمامية
-                ctx.bezierCurveTo(-8, -15, -20, -18, -28, -15);
-                
-                // طرف الجناح المدور
-                ctx.bezierCurveTo(-35, -12, -37, -6, -35, 0);
-                
-                // الحافة الخلفية
-                ctx.bezierCurveTo(-33, 8, -20, 12, -8, 10);
-                
-                // العودة
-                ctx.lineTo(0, 0);
-                ctx.fill();
-                
-                // تفاصيل ريش بسيطة
-                ctx.strokeStyle = "rgba(255,255,255,0.4)";
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(-5, 2); ctx.lineTo(-18, 8);
-                ctx.moveTo(-8, -2); ctx.lineTo(-22, 4);
-                ctx.stroke();
-
+                const wingMove = Math.sin(frames * 0.4) * 0.8;
+                const colors = { canary: '#facc15', dove: '#ffffff', owl: '#a16207', falcon: '#475569', crow: '#111827' };
+                const mainColor = colors[skin] || '#facc15';
+                const isCrow = skin === 'crow';
+                ctx.fillStyle = mainColor;
+                ctx.beginPath(); ctx.ellipse(0, 0, 24, 20, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = isCrow ? "#374151" : "white"; ctx.beginPath(); ctx.arc(12, -6, 6, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = isCrow ? "white" : "black"; ctx.beginPath(); ctx.arc(15, -6, 2.5, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = isCrow ? "#000" : "#ea580c"; ctx.beginPath();
+                ctx.moveTo(22, 0); ctx.lineTo(isCrow ? 42 : 32, 2); ctx.lineTo(22, 8); ctx.fill();
+                ctx.save(); ctx.rotate(wingMove); ctx.fillStyle = isCrow ? '#1f2937' : 'rgba(0,0,0,0.15)';
+                ctx.beginPath(); ctx.moveTo(-5, 0); ctx.quadraticCurveTo(-20, -20, -30, 0); ctx.quadraticCurveTo(-20, 15, -5, 0); ctx.fill();
+                ctx.restore(); ctx.restore();
+            },
+            drawPipe(ctx, x, y, w, h, isTop, theme) {
+                const grad = ctx.createLinearGradient(x, 0, x+w, 0);
+                grad.addColorStop(0, theme.pipe[0]); grad.addColorStop(0.5, theme.pipe[1]); grad.addColorStop(1, theme.pipe[0]);
+                ctx.fillStyle = grad; ctx.fillRect(x, isTop ? 0 : y, w, isTop ? y : h);
+                const capH = 35; const capY = isTop ? y - capH : y;
+                ctx.fillStyle = theme.pipe[2]; ctx.fillRect(x - 6, capY, w + 12, capH);
+                ctx.strokeStyle = "rgba(255,255,255,0.15)"; ctx.strokeRect(x - 6, capY, w + 12, capH);
+            },
+            drawLeaf(ctx, x, y, size, angle, color) {
+                ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+                ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(size, -size, size * 2, 0); ctx.quadraticCurveTo(size, size, 0, 0); ctx.fill();
                 ctx.restore();
             },
-            
-            drawBird(ctx, type, r, frames, vel) {
-                ctx.save();
-                ctx.scale(r/20, r/20); 
-                ctx.translate(-50, -50);
-                const wingMove = Math.sin(frames * 0.4) * 0.8;
-                
-                ctx.shadowBlur = 20;
-                ctx.shadowColor = "rgba(0,0,0,0.25)";
-                ctx.shadowOffsetX = 3;
-                ctx.shadowOffsetY = 3;
-
-                switch(type) {
-                    case 'canary':
-                        // جسم بيضاوي متناسق
-                        let bG = ctx.createRadialGradient(40, 40, 8, 50, 50, 50);
-                        bG.addColorStop(0, "#fff59d"); bG.addColorStop(0.6, "#fbc02d"); bG.addColorStop(1, "#f57f17");
-                        ctx.fillStyle = bG;
-                        ctx.beginPath();
-                        ctx.ellipse(50, 50, 38, 30, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // رأس
-                        ctx.beginPath();
-                        ctx.ellipse(68, 42, 18, 16, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // عين
-                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(75, 38, 10, 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(77, 38, 6, 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(79, 36, 2, 0, Math.PI*2); ctx.fill();
-                        
-                        // منقار
-                        ctx.fillStyle = "#e65100";
-                        ctx.beginPath();
-                        ctx.moveTo(85, 42); ctx.lineTo(92, 44); ctx.lineTo(92, 48); ctx.lineTo(85, 46);
-                        ctx.fill();
-                        
-                        // جناح في المنتصف
-                        this.drawSleekWing(ctx, "#fff176", wingMove, 50, 50, vel);
-                        break;
-
-                    case 'dove':
-                        // جسم ناصع
-                        ctx.fillStyle = "white";
-                        ctx.beginPath();
-                        ctx.ellipse(50, 50, 36, 28, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // رأس
-                        ctx.beginPath();
-                        ctx.ellipse(68, 42, 16, 14, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // عين
-                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(74, 38, 4, 0, Math.PI*2); ctx.fill();
-                        
-                        // منقار
-                        ctx.fillStyle = "#ff9800";
-                        ctx.beginPath();
-                        ctx.moveTo(82, 44); ctx.lineTo(88, 45); ctx.lineTo(88, 49); ctx.lineTo(82, 48);
-                        ctx.fill();
-                        
-                        // جناح في المنتصف
-                        this.drawSleekWing(ctx, "#f5f5f5", wingMove * 0.6, 50, 50, vel);
-                        break;
-
-                    case 'owl':
-                        // جسم
-                        ctx.fillStyle = "#5d4037";
-                        ctx.beginPath();
-                        ctx.ellipse(50, 50, 44, 42, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // قرص الوجه
-                        ctx.fillStyle = "#8d6e63";
-                        ctx.beginPath();
-                        ctx.ellipse(50, 40, 32, 28, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        
-                        // عيون
-                        ctx.fillStyle = "#fff9c4"; 
-                        ctx.beginPath(); ctx.arc(35, 35, 16, 0, Math.PI*2); 
-                        ctx.arc(65, 35, 16, 0, Math.PI*2); 
-                        ctx.fill();
-                        
-                        // حدقة
-                        ctx.fillStyle = "black"; 
-                        ctx.beginPath(); ctx.arc(35, 35, 9, 0, Math.PI*2); 
-                        ctx.arc(65, 35, 9, 0, Math.PI*2); 
-                        ctx.fill();
-                        
-                        // وميض
-                        ctx.fillStyle = "#ffc107"; 
-                        ctx.beginPath(); ctx.arc(37, 33, 3, 0, Math.PI*2); 
-                        ctx.arc(67, 33, 3, 0, Math.PI*2); 
-                        ctx.fill();
-                        
-                        // منقار
-                        ctx.fillStyle = "#ff9800";
-                        ctx.beginPath(); 
-                        ctx.moveTo(48, 55); ctx.lineTo(50, 62); ctx.lineTo(52, 55);
-                        ctx.fill();
-                        
-                        // جناح في المنتصف
-                        this.drawSleekWing(ctx, "#8d6e63", wingMove * 0.8, 50, 50, vel);
-                        break;
-
-                    case 'falcon':
-                        // جسم
-                        let fG = ctx.createLinearGradient(0, 25, 0, 75);
-                        fG.addColorStop(0, "#546e7a"); fG.addColorStop(1, "#37474f");
-                        ctx.fillStyle = fG;
-                        ctx.beginPath();
-                        ctx.moveTo(15, 48); 
-                        ctx.bezierCurveTo(20, 30, 75, 25, 92, 45);
-                        ctx.bezierCurveTo(98, 65, 60, 78, 15, 48);
-                        ctx.fill();
-                        
-                        // رأس
-                        ctx.beginPath();
-                        ctx.moveTo(75, 42); ctx.lineTo(88, 40); ctx.lineTo(92, 48); ctx.lineTo(85, 50);
-                        ctx.fill();
-                        
-                        // عين
-                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(78, 42, 7, 0, Math.PI*2); ctx.fill();
-                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(80, 42, 4, 0, Math.PI*2); ctx.fill();
-                        
-                        // منقار
-                        ctx.fillStyle = "#ffeb3b";
-                        ctx.beginPath();
-                        ctx.moveTo(88, 42); ctx.lineTo(105, 40); ctx.lineTo(102, 48); ctx.lineTo(88, 46);
-                        ctx.fill();
-                        
-                        // جناح في المنتصف
-                        this.drawSleekWing(ctx, "#455a64", wingMove * 1.2, 50, 50, vel);
-                        break;
+            drawTree(ctx, x, y, scale, color) {
+                ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+                ctx.fillStyle = "#3e2723"; ctx.fillRect(-5, -10, 10, 10);
+                ctx.fillStyle = color;
+                for(let i=0; i<3; i++) {
+                    ctx.beginPath(); ctx.moveTo(0, -50 + i*15); ctx.lineTo(20, -10 + i*15); ctx.lineTo(-20, -10 + i*15); ctx.fill();
                 }
                 ctx.restore();
             },
-            
-            drawPipe(ctx, x, y, w, h, isTop, themeIdx, nextThemeIdx, progress) {
-                const colors = [['#2e7d32', '#66bb6a', '#1b5e20'], ['#37474f', '#78909c', '#263238'], ['#ef6c00', '#ffb74d', '#bf360c'], ['#d81b60', '#f48fb1', '#880e4f'], ['#c62828', '#ef5350', '#7f0000'], ['#512da8', '#9575cd', '#311b92'], ['#1b5e20', '#43a047', '#002808'], ['#1a237e', '#5c6bc0', '#0d47a1']];
-                const c1 = colors[themeIdx % colors.length];
-                const c2 = colors[nextThemeIdx % colors.length];
-                const curMain = lerpColor(c1[0], c2[0], progress);
-                const curLight = lerpColor(c1[1], c2[1], progress);
-                const curDark = lerpColor(c1[2], c2[2], progress);
-
-                let grad = ctx.createLinearGradient(x, 0, x + w, 0);
-                grad.addColorStop(0, curMain); grad.addColorStop(0.3, curLight); grad.addColorStop(1, curMain);
-                ctx.fillStyle = grad; ctx.fillRect(x, isTop ? 0 : y, w, isTop ? y : h);
-                const capH = 40; const capX = x - 6; const capW = w + 12; const capY = isTop ? y - capH : y;
-                ctx.fillStyle = curDark; ctx.fillRect(capX, capY, capW, capH);
-                ctx.fillStyle = grad; ctx.fillRect(capX + 2, capY + 2, capW - 4, capH - 4);
-                ctx.fillStyle = "rgba(255,255,255,0.15)";
-                ctx.fillRect(x + w * 0.1, isTop ? 0 : y, w * 0.1, isTop ? y : h);
+            drawCityLight(ctx, x, y) {
+                ctx.fillStyle = "#fbbf24";
+                ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.002) * 0.4;
+                ctx.fillRect(x, y, 2, 2);
+                ctx.globalAlpha = 1.0;
             }
         };
 
         const Themes = [
-            { nameAr: "وادي الربيع", nameEn: "Spring Valley", flag: "☀️", bg: ["#81d4fa", "#29b6f6"], floor: "#2e7d32", draw(ctx, w, h, f) {
-                ctx.fillStyle = "rgba(255,255,255,0.7)";
-                for(let i=0; i<3; i++) {
-                    let x = (((i*600) + f*0.4) % (w+400) + (w+400)) % (w+400) - 200;
-                    ctx.beginPath(); ctx.arc(x, 80 + i*40, 25, 0, Math.PI*2); ctx.arc(x+30, 80 + i*40, 35, 0, Math.PI*2); ctx.fill();
+            { 
+                nameAr: "وادي الربيع", nameEn: "Spring Valley", flag: "☀️", leafColor: "#4ade80",
+                bg: ["#0ea5e9", "#bae6fd"], floor: "#15803d", pipe: ["#166534", "#4ade80", "#052e16"],
+                draw(ctx, w, h, f) { 
+                    for(let i=0; i<5; i++) { let tx = (i*400 - (f*0.8)%w + w)%w; Renderer.drawTree(ctx, tx, h-10, 1.2, "#065f46"); }
+                    for(let i=0; i<6; i++) { let tx = (i*320 - (f*1.5)%w + w)%w; Renderer.drawTree(ctx, tx, h-10, 0.8, "#059669"); }
+                    ctx.fillStyle = "#fde047"; ctx.beginPath(); ctx.arc(w*0.8, 100, 45, 0, Math.PI*2); ctx.fill(); 
                 }
-                ctx.fillStyle = "#1b5e20";
-                for(let i=0; i<5; i++) {
-                    let lx = (((i*400) - f*1.2) % (w+300) + (w+300)) % (w+300) - 150;
-                    ctx.beginPath(); ctx.moveTo(lx, h-20); ctx.lineTo(lx+50, h-150); ctx.lineTo(lx+100, h-20); ctx.fill();
+            },
+            { 
+                nameAr: "باريس فرنسا", nameEn: "Paris France", flag: "🇫🇷", leafColor: "#ddd6fe",
+                bg: ["#1e1b4b", "#4338ca"], floor: "#1e1b4b", pipe: ["#334155", "#94a3b8", "#0f172a"],
+                draw(ctx, w, h, f) {
+                    let tx = (w*0.7 - (f*0.6)%w + w)%w;
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.moveTo(tx, h); ctx.lineTo(tx+40, h-300); ctx.lineTo(tx+80, h); ctx.fill();
+                    // Tower Lights
+                    for(let i=0; i<6; i++) { Renderer.drawCityLight(ctx, tx + 38, h - 50 - i*40); }
                 }
-            }},
-            { nameAr: "نيويورك", nameEn: "New York", flag: "🇺🇸", bg: ["#0a192f", "#112240"], floor: "#1a1a1a", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#020c1b";
-                for(let i=0; i<8; i++) {
-                    let lx = (((i*250) - f*1.5) % (w+200) + (w+200)) % (w+200) - 100;
-                    ctx.fillRect(lx, h - (150 + (i%5)*100), 110, 500);
+            },
+            { 
+                nameAr: "الجيزة مصر", nameEn: "Giza Egypt", flag: "🇪🇬", leafColor: "#facc15",
+                bg: ["#f59e0b", "#fef3c7"], floor: "#d97706", pipe: ["#92400e", "#fbbf24", "#451a03"],
+                draw(ctx, w, h, f) {
+                    for(let i=0; i<3; i++) { let dx = (i*600 - (f*1.2)%w + w)%w; ctx.fillStyle = "rgba(180, 83, 9, 0.3)"; ctx.beginPath(); ctx.ellipse(dx, h, 300, 100, 0, Math.PI, Math.PI*2); ctx.fill(); }
+                    for(let i=0; i<2; i++){ let px = (w*0.4 + i*450 - (f*2)%w + w)%w; ctx.fillStyle = "rgba(180, 83, 9, 0.5)"; ctx.beginPath(); ctx.moveTo(px, h); ctx.lineTo(px+150, h-200); ctx.lineTo(px+300, h); ctx.fill(); }
                 }
-            }},
-            { nameAr: "الجيزة مصر", nameEn: "Giza Egypt", flag: "🇪🇬", bg: ["#fb8c00", "#f4511e"], floor: "#5d4037", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#3e2723";
-                for(let i=0; i<2; i++) {
-                    let lx = (((i*1200) - f*0.9) % (w+900) + (w+900)) % (w+900) - 450;
-                    ctx.beginPath(); ctx.moveTo(lx, h-20); ctx.lineTo(lx+350, h-380); ctx.lineTo(lx+700, h-20); ctx.fill();
+            },
+            { 
+                nameAr: "طوكيو اليابان", nameEn: "Tokyo Japan", flag: "🇯🇵", leafColor: "#f472b6",
+                bg: ["#fdf2f8", "#fbcfe8"], floor: "#be185d", pipe: ["#9d174d", "#f472b6", "#500724"],
+                draw(ctx, w, h, f) {
+                    ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(w*0.2, 120, 50, 0, Math.PI*2); ctx.fill();
+                    let tx = (w*0.7 - (f*1.2)%w + w)%w;
+                    ctx.fillStyle = "#881337"; ctx.fillRect(tx, h-220, 80, 220); ctx.fillRect(tx-15, h-200, 110, 25);
                 }
-            }},
-            { nameAr: "طوكيو اليابان", nameEn: "Tokyo Japan", flag: "🇯🇵", bg: ["#fce4ec", "#f8bbd0"], floor: "#c2185b", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#880e4f";
-                for(let i=0; i<3; i++) {
-                    let tx = (((i*500) - f*1.2) % (w+400) + (w+400)) % (w+400) - 150;
-                    ctx.fillRect(tx, h-160, 100, 25); ctx.fillRect(tx+15, h-160, 12, 160); ctx.fillRect(tx+73, h-160, 12, 160);
+            },
+            { 
+                nameAr: "لندن بريطانيا", nameEn: "London UK", flag: "🇬🇧", leafColor: "#94a3b8",
+                bg: ["#334155", "#64748b"], floor: "#0f172a", pipe: ["#1e293b", "#94a3b8", "#020617"],
+                draw(ctx, w, h, f) {
+                    let bx = (w*0.5 - (f*0.9)%w + w)%w;
+                    ctx.fillStyle = "#451a03"; ctx.fillRect(bx, h-350, 70, 350);
+                    // Clock & Lights
+                    ctx.fillStyle = "#fbbf24"; ctx.beginPath(); ctx.arc(bx+35, h-310, 18, 0, Math.PI*2); ctx.fill();
+                    for(let i=0; i<4; i++) { Renderer.drawCityLight(ctx, bx + 25, h - 50 - i*60); Renderer.drawCityLight(ctx, bx + 45, h - 50 - i*60); }
                 }
-            }},
-            { nameAr: "بكين الصين", nameEn: "Beijing China", flag: "🇨🇳", bg: ["#b71c1c", "#d32f2f"], floor: "#3e0000", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#ffeb3b";
-                for(let i=0; i<6; i++) {
-                    let lx = (((i*350) - f*2) % (w+250) + (w+250)) % (w+250) - 100;
-                    ctx.beginPath(); ctx.ellipse(lx, 150 + Math.sin(f*0.02+i)*40, 25, 35, 0, 0, Math.PI*2); ctx.fill();
+            },
+            { 
+                nameAr: "الرياض السعودية", nameEn: "Riyadh KSA", flag: "🇸🇦", leafColor: "#34d399",
+                bg: ["#064e3b", "#065f46"], floor: "#022c22", pipe: ["#064e3b", "#34d399", "#022c22"],
+                draw(ctx, w, h, f) {
+                    let kx = (w*0.6 - (f*1.1)%w + w)%w;
+                    ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.beginPath(); ctx.moveTo(kx, h); ctx.lineTo(kx+45, h-380); ctx.lineTo(kx+90, h); ctx.fill();
+                    // Bridge Light
+                    ctx.fillStyle = "#34d399"; ctx.globalAlpha = 0.8; ctx.fillRect(kx + 38, h - 340, 14, 5); ctx.globalAlpha = 1.0;
                 }
-            }},
-            { nameAr: "باريس فرنسا", nameEn: "Paris France", flag: "🇫🇷", bg: ["#4a148c", "#7b1fa2"], floor: "#1a0033", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#000000";
-                let ex = (((w/2) - f*0.7) % (w+600) + (w+600)) % (w+600) - 300;
-                ctx.beginPath(); ctx.moveTo(ex, h-20); ctx.lineTo(ex+150, h-550); ctx.lineTo(ex+300, h-20); ctx.fill();
-            }},
-            { nameAr: "رياض العز", nameEn: "Riyadh KSA", flag: "🇸🇦", bg: ["#004d40", "#00695c"], floor: "#00241a", draw(ctx, w, h, f) {
-                ctx.fillStyle = "#00c853";
-                let kx = (((w/2) - f*0.8) % (w+400) + (w+400)) % (w+400) - 200;
-                ctx.fillRect(kx, h-450, 120, 450); ctx.fillStyle="#00241a"; ctx.beginPath(); ctx.arc(kx+60, h-400, 40, 0, Math.PI*2); ctx.fill();
-            }},
-            { nameAr: "الفضاء البعيد", nameEn: "Deep Space", flag: "🚀", bg: ["#0d47a1", "#010a1a"], floor: "#1a237e", draw(ctx, w, h, f) {
-                for(let i=0; i<40; i++) {
-                    ctx.fillStyle = "white"; ctx.globalAlpha = Math.random() * 0.8 + 0.2;
-                    ctx.beginPath(); ctx.arc((i*197)%w, (i*351)%h, 1.5, 0, Math.PI*2); ctx.fill();
+            },
+            { 
+                nameAr: "روما إيطاليا", nameEn: "Rome Italy", flag: "🇮🇹", leafColor: "#fca5a5",
+                bg: ["#fb923c", "#ffedd5"], floor: "#9a3412", pipe: ["#7c2d12", "#f97316", "#431407"],
+                draw(ctx, w, h, f) {
+                    let cx = (w*0.4 - (f*0.7)%w + w)%w;
+                    ctx.fillStyle = "rgba(0,0,0,0.3)"; ctx.beginPath(); ctx.ellipse(cx+100, h, 160, 110, 0, Math.PI, Math.PI*2); ctx.fill();
                 }
-                ctx.globalAlpha = 1;
-            }}
+            },
+            { 
+                nameAr: "بكين الصين", nameEn: "Beijing China", flag: "🇨🇳", leafColor: "#ef4444",
+                bg: ["#7f1d1d", "#fecaca"], floor: "#450a0a", pipe: ["#991b1b", "#ef4444", "#450a0a"],
+                draw(ctx, w, h, f) {
+                    for(let i=0; i<3; i++) { let wx = (i*450 - (f*1.2)%w + w)%w; ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(wx, h-140, 180, 140); }
+                }
+            },
+            { 
+                nameAr: "ريو البرازيل", nameEn: "Rio Brazil", flag: "🇧🇷", leafColor: "#facc15",
+                bg: ["#15803d", "#d9f99d"], floor: "#14532d", pipe: ["#166534", "#facc15", "#064e3b"],
+                draw(ctx, w, h, f) {
+                    let rx = (w*0.3 - (f*0.6)%w + w)%w;
+                    ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fillRect(rx, h-280, 50, 280); ctx.fillRect(rx-70, h-250, 190, 25);
+                }
+            },
+            { 
+                nameAr: "الفضاء السحيق", nameEn: "Deep Space", flag: "🌌", leafColor: "#a855f7",
+                bg: ["#020617", "#000000"], floor: "#000000", pipe: ["#1e293b", "#38bdf8", "#082f49"],
+                draw(ctx, w, h, f) {
+                    for(let i=0; i<5; i++) {
+                        let px = (w - (f*(0.3+i*0.1) + i*300) % (w+200)); let py = (i*163 + 100) % h;
+                        ctx.fillStyle = i%2? "rgba(248, 113, 113, 0.4)":"rgba(96, 165, 250, 0.4)"; 
+                        ctx.beginPath(); ctx.arc(px, py, 25+i*8, 0, Math.PI*2); ctx.fill();
+                    }
+                }
+            }
         ];
 
         const Skins = [
             { id: 'canary', nameAr: 'كناري', nameEn: 'Canary', lock: 0, icon: '🐥' },
-            { id: 'dove', nameAr: 'حمامة', nameEn: 'Dove', lock: 30, icon: '🕊️' },
-            { id: 'owl', nameAr: 'بومة', nameEn: 'Owl', lock: 80, icon: '🦉' },
-            { id: 'falcon', nameAr: 'صقر', nameEn: 'Falcon', lock: 120, icon: '🦅' }
+            { id: 'dove', nameAr: 'يمامة', nameEn: 'Dove', lock: 20, icon: '🕊️' },
+            { id: 'owl', nameAr: 'بومة', nameEn: 'Owl', lock: 50, icon: '🦉' },
+            { id: 'crow', nameAr: 'غراب', nameEn: 'Crow', lock: 80, icon: '🐦‍⬛' },
+            { id: 'falcon', nameAr: 'صقر', nameEn: 'Falcon', lock: 150, icon: '🦅' }
         ];
 
         const Game = {
             canvas: document.getElementById('gameCanvas'), ctx: null,
             state: 'MENU', frames: 0, score: 0, best: 0,
-            bird: { y: 0, v: 0, r: 15, skin: 'canary' }, 
-            pipes: [], themeIdx: 0, nextThemeIdx: 0, themeProgress: 0, trans: 0,
-            speed: 4.2, gap: 215,
+            bird: { y: 0, v: 0, r: 20, skin: 'canary' }, 
+            pipes: [], particles: [], leaves: [], themeIdx: 0, 
+            speed: 4.5, gap: 195, shake: 0, firstTime: true,
 
             init() {
                 this.ctx = this.canvas.getContext('2d');
                 this.resize();
                 window.addEventListener('resize', () => this.resize());
-                this.best = Storage.get('fw_best_global_pro_v2', 0);
-                Lang.init(); AudioSys.init();
+                Lang.init(); AudioSys.init(); initAuth();
+                this.firstTime = localStorage.getItem('fw_onboarded_v10') === null;
+
                 const act = (e) => {
                     if(e.type === 'keydown' && e.code !== 'Space') return;
-                    if(this.state === 'PLAYING') { this.bird.v = -7.5; AudioSys.play(450, 'triangle', 0.1); }
-                    if(this.state === 'GAMEOVER') this.start();
+                    if(this.state === 'PLAYING') { 
+                        this.bird.v = -7.4; AudioSys.play(450, 'square', 0.1); 
+                        this.spawnParticles(80, this.bird.y, 'white', 4);
+                    }
+                    if(this.state === 'GAMEOVER' && this.frames > 30) this.start();
                 };
                 window.addEventListener('keydown', act);
                 this.canvas.addEventListener('mousedown', act);
@@ -486,132 +481,148 @@
             resize() { this.w = this.canvas.width = window.innerWidth; this.h = this.canvas.height = window.innerHeight; },
             reset() {
                 this.bird.y = this.h / 2; this.bird.v = 0;
-                this.pipes = []; this.score = 0; this.frames = 0;
-                this.themeIdx = 0; this.nextThemeIdx = 0; this.themeProgress = 0; this.trans = 0;
-                this.speed = 4.2; this.gap = 215;
+                this.pipes = []; this.particles = []; this.leaves = []; this.score = 0; this.frames = 0;
+                this.themeIdx = 0; this.speed = 4.5; this.gap = 195; this.shake = 0;
                 document.getElementById('scoreDisplay').innerText = 0;
-                this.updateHud();
+                this.updateThemeUI();
+                for(let i=0; i<15; i++) this.spawnLeaf(true);
             },
-            updateHud() {
-                const t = Themes[this.nextThemeIdx];
+            spawnLeaf(randomX = false) {
+                this.leaves.push({
+                    x: randomX ? Math.random() * this.w : this.w + 50,
+                    y: Math.random() * this.h, size: Math.random() * 5 + 5,
+                    vx: -(Math.random() * 2 + 1), vy: Math.random() * 0.5 - 0.25,
+                    angle: Math.random() * Math.PI * 2, rot: Math.random() * 0.05 - 0.025
+                });
+            },
+            updateThemeUI() {
+                const t = Themes[this.themeIdx];
                 document.getElementById('hudFlag').innerText = t.flag;
                 document.getElementById('hudLocName').innerText = (Lang.curr === 'ar' ? t.nameAr : t.nameEn);
+            },
+            handleMainAction() {
+                if(this.firstTime) { UI.showTutorial(); } 
+                else { this.start(); }
             },
             start() { this.reset(); this.state = 'PLAYING'; UI.showHUD(); },
             gameOver() {
                 if(this.state === 'GAMEOVER') return;
-                this.state = 'GAMEOVER';
-                AudioSys.play(80, 'sawtooth', 0.8);
-                if(this.score > this.best) { this.best = this.score; Storage.set('fw_best_global_pro_v2', this.best); }
+                this.state = 'GAMEOVER'; this.shake = 20; AudioSys.play(120, 'sawtooth', 0.4);
+                this.spawnParticles(80, this.bird.y, 'red', 20);
+                if(this.score > this.best) { this.best = this.score; saveProgress(); }
                 UI.showGameOver(this.score, this.best);
+            },
+            spawnParticles(x, y, color, count) {
+                for(let i=0; i<count; i++) {
+                    this.particles.push({ x, y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 1, color, size: Math.random()*5+2 });
+                }
             },
             update() {
                 this.frames++;
-                this.speed = 4.2 + (this.score * 0.05);
-                this.gap = Math.max(165, 215 - (this.score * 0.7));
-
-                if(this.themeIdx !== this.nextThemeIdx) {
-                    this.themeProgress += 0.008;
-                    if(this.themeProgress >= 1) { this.themeIdx = this.nextThemeIdx; this.themeProgress = 0; }
-                }
-
-                this.bird.v += 0.42; this.bird.y += this.bird.v;
-                let spawnInterval = Math.max(70, 100 - (this.score * 0.5));
-                if(this.frames % Math.floor(spawnInterval) === 0) {
-                    const py = Math.random() * (this.h - this.gap - 300) + 150;
-                    this.pipes.push({ x: this.w, y: py, gap: this.gap, passed: false });
-                }
-
-                for(let i=0; i<this.pipes.length; i++) {
-                    let p = this.pipes[i]; p.x -= this.speed;
-                    const bx = 70, by = this.bird.y, br = this.bird.r - 2;
-                    if(bx + br > p.x && bx - br < p.x + 95) {
-                        if(by - br < p.y || by + br > p.y + p.gap) this.gameOver();
-                    }
-                    if(p.x + 95 < bx && !p.passed) {
-                        p.passed = true; this.score++; AudioSys.play(950, 'sine', 0.1);
-                        document.getElementById('scoreDisplay').innerText = this.score;
-                        if(this.score > 0 && this.score % 10 === 0) {
-                            this.nextThemeIdx = (this.themeIdx + 1) % Themes.length;
-                            this.trans = 120;
-                            this.updateHud();
-                            UI.toast(Themes[this.nextThemeIdx].flag + " " + (Lang.curr === 'ar' ? Themes[this.nextThemeIdx].nameAr : Themes[this.nextThemeIdx].nameEn));
-                        }
-                    }
-                    if(p.x < -150) this.pipes.splice(i--, 1);
-                }
-                if(this.bird.y > this.h - 20 || this.bird.y < 0) this.gameOver();
-                if(this.trans > 0) this.trans--;
-            },
-            draw() {
-                const t1 = Themes[this.themeIdx] || Themes[0];
-                const t2 = Themes[this.nextThemeIdx] || Themes[0];
-                const p = this.themeProgress;
-
-                const bg1 = lerpColor(t1.bg[0], t2.bg[0], p);
-                const bg2 = lerpColor(t1.bg[1], t2.bg[1], p);
-                const floor = lerpColor(t1.floor, t2.floor, p);
-
-                const grd = this.ctx.createLinearGradient(0,0,0,this.h);
-                grd.addColorStop(0, bg1); grd.addColorStop(1, bg2);
-                this.ctx.fillStyle = grd; this.ctx.fillRect(0,0,this.w,this.h);
-
-                this.ctx.globalAlpha = 1 - p; t1.draw(this.ctx, this.w, this.h, this.frames);
-                this.ctx.globalAlpha = p; t2.draw(this.ctx, this.w, this.h, this.frames);
-                this.ctx.globalAlpha = 1;
-
-                this.pipes.forEach(pp => {
-                    Renderer.drawPipe(this.ctx, pp.x, pp.y, 95, this.h, true, this.themeIdx, this.nextThemeIdx, p);
-                    Renderer.drawPipe(this.ctx, pp.x, pp.y + pp.gap, 95, this.h, false, this.themeIdx, this.nextThemeIdx, p);
+                if(this.shake > 0) this.shake *= 0.9; else this.shake = 0;
+                this.speed = 4.5 + (this.score * 0.04);
+                this.bird.v += 0.38; this.bird.y += this.bird.v;
+                
+                this.particles.forEach((p, i) => { p.x += p.vx; p.y += p.vy; p.life -= 0.02; if(p.life <= 0) this.particles.splice(i, 1); });
+                this.leaves.forEach((l, i) => {
+                    l.x += l.vx - (this.speed * 0.2); l.y += l.vy + Math.sin(this.frames * 0.05 + i) * 0.2;
+                    l.angle += l.rot; if(l.x < -50) this.leaves.splice(i, 1);
                 });
                 
-                this.ctx.fillStyle = floor; this.ctx.fillRect(0, this.h - 20, this.w, 20);
+                if(this.frames % 60 === 0) this.spawnLeaf();
+                if(this.frames % 90 === 0) {
+                    const py = Math.random() * (this.h - this.gap - 250) + 120;
+                    this.pipes.push({ x: this.w, y: py, gap: this.gap, passed: false });
+                }
                 
+                for(let i=0; i<this.pipes.length; i++) {
+                    let p = this.pipes[i]; p.x -= this.speed;
+                    const bx = 80, by = this.bird.y, br = 16; 
+                    if(bx + br > p.x && bx - br < p.x + 85) { 
+                        if(by - br < p.y || by + br > p.y + p.gap) this.gameOver(); 
+                    }
+                    if(p.x + 85 < bx && !p.passed) {
+                        p.passed = true; this.score++; AudioSys.play(880, 'sine', 0.15, 0.05);
+                        document.getElementById('scoreDisplay').innerText = this.score;
+                        document.getElementById('scoreDisplay').classList.remove('score-pop');
+                        void document.getElementById('scoreDisplay').offsetWidth; 
+                        document.getElementById('scoreDisplay').classList.add('score-pop');
+                        
+                        let nextIdx = Math.min(Themes.length - 1, Math.floor(this.score / 10));
+                        if(nextIdx !== this.themeIdx) {
+                            this.themeIdx = nextIdx; this.updateThemeUI();
+                            UI.toast(Themes[this.themeIdx].flag + " " + (Lang.curr === 'ar' ? Themes[this.themeIdx].nameAr : Themes[this.themeIdx].nameEn));
+                        }
+                    }
+                    if(p.x < -120) this.pipes.splice(i--, 1);
+                }
+                if(this.bird.y + 20 > this.h || this.bird.y - 20 < 0) this.gameOver();
+            },
+            draw() {
+                const t = Themes[this.themeIdx];
+                this.ctx.save();
+                if(this.shake > 0) this.ctx.translate(Math.random()*this.shake - this.shake/2, Math.random()*this.shake - this.shake/2);
+                const grd = this.ctx.createLinearGradient(0,0,0,this.h);
+                grd.addColorStop(0, t.bg[0]); grd.addColorStop(1, t.bg[1]);
+                this.ctx.fillStyle = grd; this.ctx.fillRect(0,0,this.w,this.h);
+                t.draw(this.ctx, this.w, this.h, this.frames);
+                this.leaves.forEach(l => Renderer.drawLeaf(this.ctx, l.x, l.y, l.size, l.angle, t.leafColor));
+                this.pipes.forEach(pp => {
+                    Renderer.drawPipe(this.ctx, pp.x, pp.y, 85, this.h, true, t);
+                    Renderer.drawPipe(this.ctx, pp.x, pp.y + pp.gap, 85, this.h, false, t);
+                });
+                this.particles.forEach(p => {
+                    this.ctx.fillStyle = p.color; this.ctx.globalAlpha = p.life;
+                    this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); this.ctx.fill();
+                });
+                this.ctx.globalAlpha = 1; this.ctx.fillStyle = t.floor; this.ctx.fillRect(0, this.h - 10, this.w, 10);
                 if(this.state !== 'MENU') {
-                    this.ctx.save(); this.ctx.translate(70, this.bird.y);
-                    let rotation = Math.max(-0.6, Math.min(0.6, this.bird.v * 0.12));
-                    this.ctx.rotate(rotation);
-                    Renderer.drawBird(this.ctx, this.bird.skin, this.bird.r, this.frames, this.bird.v);
+                    this.ctx.save(); this.ctx.translate(80, this.bird.y);
+                    this.ctx.rotate(Math.min(Math.PI/3, Math.max(-Math.PI/4, this.bird.v * 0.08)));
+                    Renderer.drawBird(this.ctx, this.bird.skin, this.frames, this.bird.v);
                     this.ctx.restore();
                 }
-
-                if(this.trans > 0) {
-                    this.ctx.fillStyle = `rgba(255,255,255,${this.trans/120})`;
-                    this.ctx.font = `900 56px ${Lang.curr==='ar'?'Cairo':'Fredoka'}`; this.ctx.textAlign = "center";
-                    const tName = Lang.curr==='ar' ? Themes[this.nextThemeIdx].nameAr : Themes[this.nextThemeIdx].nameEn;
-                    this.ctx.fillText(Themes[this.nextThemeIdx].flag + " " + tName, this.w/2, this.h/2);
-                }
+                this.ctx.restore();
             },
             loop() { if(this.state === 'PLAYING') this.update(); this.draw(); requestAnimationFrame(() => this.loop()); }
         };
 
         const UI = {
-            hideAll() { document.querySelectorAll('.ui-screen').forEach(s => s.classList.add('hidden-screen')); },
+            hideAll() { document.querySelectorAll('.ui-screen').forEach(s => s.classList.add('hidden-screen')); document.getElementById('hud').classList.add('hidden'); },
             showMenu() { this.hideAll(); document.getElementById('mainMenu').classList.remove('hidden-screen'); Game.state = 'MENU'; },
-            showHUD() { this.hideAll(); document.getElementById('hud').classList.remove('hidden'); document.getElementById('bestScoreDisplay').innerText = Game.best; },
+            showHUD() { this.hideAll(); document.getElementById('hud').classList.remove('hidden'); this.updateBestDisplays(); },
+            showTutorial() { document.getElementById('tutorialOverlay').classList.remove('hidden-screen'); },
+            closeTutorial() { 
+                document.getElementById('tutorialOverlay').classList.add('hidden-screen'); 
+                Game.firstTime = false; 
+                localStorage.setItem('fw_onboarded_v10', 'true');
+                Game.start();
+            },
+            updateBestDisplays() { document.getElementById('bestScoreDisplay').innerText = Game.best; document.getElementById('skinPts').innerText = Game.best; },
             showGameOver(s, b) { document.getElementById('goScore').innerText = s; document.getElementById('goBest').innerText = b; document.getElementById('gameOverScreen').classList.remove('hidden-screen'); },
             showSkins() {
                 this.hideAll(); const grid = document.getElementById('skinsGrid'); grid.innerHTML = '';
-                document.getElementById('skinPts').innerText = Game.best + " PTS";
+                this.updateBestDisplays();
                 Skins.forEach(s => {
                     const locked = Game.best < s.lock; const active = Game.bird.skin === s.id;
                     const item = document.createElement('div');
-                    item.className = `p-6 glass-card flex items-center justify-between border-2 transition-all ${active?'border-yellow-400 scale-[1.03] shadow-yellow-500/20':'border-transparent'} ${locked?'opacity-50 grayscale':'hover:bg-white/5 cursor-pointer hover:scale-[1.02]'}`;
-                    item.innerHTML = `<div class="flex items-center gap-6"><div class="text-5xl filter drop-shadow-lg">${s.icon}</div><div><div class="text-white font-black text-xl">${Lang.curr==='ar'?s.nameAr:s.nameEn}</div><div class="text-[12px] text-slate-400 font-bold mt-1">${locked?Lang.dict[Lang.curr].unlockAt+s.lock:Lang.dict[Lang.curr].available}</div></div></div><div class="text-3xl">${locked?'🔒':(active?'✅':'🎯')}</div>`;
-                    if(!locked) item.onclick = () => { Game.bird.skin = s.id; AudioSys.play(800, 'sine', 0.05); UI.showSkins(); };
+                    item.className = `p-6 glass-card flex items-center justify-between border-2 transition-all ${active?'border-yellow-400 bg-white/10':'border-transparent'} ${locked?'opacity-40 grayscale':'cursor-pointer hover:bg-white/10'}`;
+                    item.innerHTML = `<div class="flex items-center gap-6"><div class="text-5xl">${s.icon}</div><div><div class="text-white font-black text-lg">${Lang.curr==='ar'?s.nameAr:s.nameEn}</div><div class="text-[10px] text-white/40 font-bold uppercase tracking-widest">${locked?Lang.dict[Lang.curr].unlockAt+s.lock:Lang.dict[Lang.curr].available}</div></div></div><div class="text-2xl">${locked?'🔒':(active?'✅':'')}</div>`;
+                    if(!locked) item.onclick = () => { Game.bird.skin = s.id; AudioSys.play(600, 'sine', 0.05); saveProgress(); UI.showSkins(); };
                     grid.appendChild(item);
                 });
                 document.getElementById('skinsScreen').classList.remove('hidden-screen');
             },
             showSettings() { this.hideAll(); document.getElementById('settingsScreen').classList.remove('hidden-screen'); AudioSys.updateUI(); },
             toast(msg) {
-                const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = Lang.dict[Lang.curr].location + msg;
-                t.classList.add('show');
-                setTimeout(() => t.classList.remove('show'), 3500);
+                const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = (Lang.curr === 'ar' ? "وصلت إلى " : "Arrived at ") + msg;
+                t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 3500);
             }
         };
 
         window.onload = () => Game.init();
+        window.UI = UI; window.Game = Game; window.Lang = Lang; window.AudioSys = AudioSys;
     </script>
 </body>
 </html>
+
