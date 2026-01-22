@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlTag">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FlapWorld: Global Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Fredoka:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --glass: rgba(15, 23, 42, 0.95); --border: rgba(255, 255, 255, 0.1); }
+        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Cairo', sans-serif; touch-action: none; user-select: none; }
+        body.en { font-family: 'Fredoka', sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; background: #000; }
+        
+        .ui-screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(12px); }
+        .hidden-screen { opacity: 0; pointer-events: none; transform: scale(0.98); }
+        .glass-card { background: var(--glass); border: 1px solid var(--border); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7); border-radius: 2.5rem; }
+        
+        .btn-action { transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-bottom: 5px solid rgba(0,0,0,0.3); }
+        .btn-action:active { transform: translateY(2px); border-bottom-width: 0; }
+        
+        #toast { position: absolute; top: 20px; left: 50%; transform: translateX(-50%) translateY(-150%); transition: 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- واجهة HUD المصغرة -->
+    <div id="hud" class="hidden absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none z-10">
+        <div class="flex flex-col items-start gap-1">
+            <div class="text-6xl font-black text-white drop-shadow-2xl select-none" id="scoreDisplay" style="-webkit-text-stroke: 1.5px rgba(0,0,0,0.5);">0</div>
+            <div id="locationHud" class="bg-black/30 backdrop-blur-md px-3 py-1 rounded-full text-white text-[10px] font-bold border border-white/10 flex items-center gap-2">
+                <span id="hudFlag">☀️</span> <span id="hudLocName">Spring Valley</span>
+            </div>
+        </div>
+        <div class="glass-card px-4 py-1.5 text-center border-yellow-500/20">
+            <div class="text-[9px] text-yellow-400 font-bold uppercase" data-t="bestScore">الأفضل</div>
+            <div class="text-xl font-black text-white" id="bestScoreDisplay">0</div>
+        </div>
+    </div>
+
+    <!-- نظام التنبيهات -->
+    <div id="toast" class="z-[150] glass-card px-8 py-3 flex items-center gap-4 border-l-4 border-yellow-400">
+        <span id="toastIcon" class="text-2xl">🌍</span>
+        <span id="toastMsg" class="text-white font-bold text-lg">وصلت لوجهة جديدة!</span>
+    </div>
+
+    <!-- القائمة الرئيسية -->
+    <div id="mainMenu" class="ui-screen">
+        <div class="mb-10 text-center">
+            <h1 class="text-7xl font-black text-white tracking-tighter mb-2 drop-shadow-2xl">FLAP<span class="text-yellow-400">WORLD</span></h1>
+            <div class="flex gap-2 justify-center">
+                <span class="bg-blue-500/20 text-blue-300 text-[10px] px-3 py-1 rounded-full border border-blue-500/20 font-bold uppercase tracking-widest">Global Pro V11</span>
+            </div>
+        </div>
+        
+        <div class="glass-card p-10 w-80 flex flex-col gap-4">
+            <button onclick="Game.start()" class="btn-action w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-2xl text-xl shadow-xl" data-t="playNow">العب الآن</button>
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="UI.showSkins()" class="btn-action bg-purple-700 hover:bg-purple-600 text-white font-bold py-3 rounded-2xl text-xs" data-t="hangar">الشخصيات</button>
+                <button onclick="UI.showSettings()" class="btn-action bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-2xl text-xs" data-t="settings">الإعدادات</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- متجر الشخصيات -->
+    <div id="skinsScreen" class="ui-screen hidden-screen">
+        <div class="glass-card p-8 w-[400px] max-h-[80vh] flex flex-col">
+            <h2 class="text-2xl font-black text-white mb-6 flex justify-between items-center border-b border-white/10 pb-4">
+                <span data-t="chooseBird">اختر طائرك</span>
+                <span class="text-yellow-400 text-sm" id="skinPts">0 PTS</span>
+            </h2>
+            <div id="skinsGrid" class="custom-scroll overflow-y-auto flex-1 space-y-3 pr-2"></div>
+            <button onclick="UI.showMenu()" class="mt-6 bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl shadow-lg" data-t="back">رجوع</button>
+        </div>
+    </div>
+
+    <!-- الإعدادات -->
+    <div id="settingsScreen" class="ui-screen hidden-screen">
+        <div class="glass-card p-8 w-80">
+            <h2 class="text-2xl font-black text-white mb-8 text-center" data-t="settings">الإعدادات</h2>
+            <div class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <span class="text-white font-bold" data-t="language">اللغة</span>
+                    <button onclick="Lang.toggle()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-1.5 rounded-xl font-black text-xs transition" id="langBtn">العربية</button>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-white font-bold" data-t="sfx">المؤثرات</span>
+                    <button id="sfxToggle" onclick="AudioSys.toggleSFX()" class="w-12 h-6 bg-emerald-500 rounded-full relative transition-all shadow-inner">
+                        <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full transition-all" id="sfxKnob"></div>
+                    </button>
+                </div>
+            </div>
+            <button onclick="UI.showMenu()" class="mt-10 w-full bg-slate-800 hover:bg-slate-700 text-white font-black py-3 rounded-xl shadow-lg" data-t="save">حفظ</button>
+        </div>
+    </div>
+
+    <!-- شاشة الخسارة -->
+    <div id="gameOverScreen" class="ui-screen hidden-screen">
+        <div class="glass-card p-10 w-80 text-center border-b-[10px] border-red-500">
+            <h2 class="text-5xl font-black text-red-500 mb-8 drop-shadow-lg" data-t="crashed">تحطمت!</h2>
+            <div class="flex gap-4 mb-8">
+                <div class="flex-1 bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <div class="text-[9px] text-slate-400 font-bold uppercase" data-t="score">النتيجة</div>
+                    <div class="text-4xl font-black text-white" id="goScore">0</div>
+                </div>
+                <div class="flex-1 bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <div class="text-[9px] text-slate-400 font-bold uppercase" data-t="best">الأفضل</div>
+                    <div class="text-4xl font-black text-yellow-400" id="goBest">0</div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-2">
+                <button onclick="Game.start()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-2xl active:scale-95 transition-all" data-t="retry">إعادة المحاولة</button>
+                <button onclick="UI.showMenu()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition-all" data-t="home">الرئيسية</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Utilities ---
+        const hexToRgb = hex => {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 15, g: 23, b: 42 };
+        };
+        const lerpColor = (c1, c2, t) => {
+            const r1 = hexToRgb(c1), r2 = hexToRgb(c2);
+            const r = Math.round(r1.r + (r2.r - r1.r) * t), g = Math.round(r1.g + (r2.g - r1.g) * t), b = Math.round(r1.b + (r2.b - r1.b) * t);
+            return `rgb(${r},${g},${b})`;
+        };
+
+        // --- Localization ---
+        const Lang = {
+            curr: 'ar',
+            dict: {
+                ar: {
+                    bestScore: "الأفضل", playNow: "العب الآن", hangar: "الشخصيات", settings: "الإعدادات",
+                    language: "اللغة", sfx: "المؤثرات", save: "حفظ", crashed: "تحطمت!", score: "النتيجة", best: "الأفضل", retry: "إعادة المحاولة", home: "الرئيسية",
+                    back: "رجوع", chooseBird: "اختر طائرك", unlockAt: "يفتح عند ", available: "متاح", location: "أهلاً بك في "
+                },
+                en: {
+                    bestScore: "Best", playNow: "Play Now", hangar: "Characters", settings: "Settings",
+                    language: "Language", sfx: "SFX", save: "Save", crashed: "Crashed!", score: "Score", best: "Best", retry: "Retry", home: "Home",
+                    back: "Back", chooseBird: "Choose Hero", unlockAt: "Unlocks at ", available: "Available", location: "Welcome to "
+                }
+            },
+            init() { const saved = localStorage.getItem('fw_lang'); if(saved) this.set(saved); },
+            toggle() { this.set(this.curr === 'ar' ? 'en' : 'ar'); AudioSys.play(600, 'sine', 0.1); },
+            set(c) {
+                this.curr = c; localStorage.setItem('fw_lang', c);
+                document.getElementById('htmlTag').dir = c === 'ar' ? 'rtl' : 'ltr';
+                document.body.classList.toggle('en', c !== 'ar');
+                document.getElementById('langBtn').innerText = c === 'ar' ? 'العربية' : 'English';
+                document.querySelectorAll('[data-t]').forEach(el => {
+                    const key = el.getAttribute('data-t');
+                    if(this.dict[c][key]) el.innerText = this.dict[c][key];
+                });
+            }
+        };
+
+        const Storage = { get: (k, d) => JSON.parse(localStorage.getItem(k)) || d, set: (k, v) => localStorage.setItem(k, JSON.stringify(v)) };
+
+        const AudioSys = {
+            ctx: null, settings: { sfx: true },
+            init() {
+                this.settings = Storage.get('fw_audio_vPro', { sfx: true });
+                if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.updateUI();
+            },
+            toggleSFX() { this.settings.sfx = !this.settings.sfx; Storage.set('fw_audio_vPro', this.settings); this.play(600, 'sine', 0.1); this.updateUI(); },
+            updateUI() {
+                const sk = document.getElementById('sfxKnob');
+                const st = document.getElementById('sfxToggle');
+                if(!st) return;
+                st.className = `w-12 h-6 rounded-full relative transition-all ${this.settings.sfx?'bg-emerald-500':'bg-slate-600'}`;
+                sk.style.right = (this.settings.sfx && Lang.curr === 'ar') || (!this.settings.sfx && Lang.curr === 'en') ? '4px' : '28px';
+            },
+            play(f, t, d, v=0.1) {
+                if(!this.settings.sfx || !this.ctx) return;
+                if(this.ctx.state === 'suspended') this.ctx.resume();
+                const o = this.ctx.createOscillator(); const g = this.ctx.createGain();
+                o.type = t; o.frequency.setValueAtTime(f, this.ctx.currentTime);
+                g.gain.setValueAtTime(v, this.ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + d);
+                o.connect(g); g.connect(this.ctx.destination); o.start(); o.stop(this.ctx.currentTime + d);
+            }
+        };
+
+        // --- محرك الرسم الفني ---
+        const Renderer = {
+            // رسم الجناح الصغير في منتصف الجسم
+            drawSleekWing(ctx, color, wingMove, x, y, vel) {
+                ctx.save();
+                ctx.translate(x, y);
+                const wingRotation = wingMove * (1 + Math.min(0.5, Math.abs(vel) * 0.1));
+                ctx.rotate(wingRotation);
+                
+                // تدرج لوني
+                let wingGrad = ctx.createLinearGradient(-30, -15, 5, 15);
+                wingGrad.addColorStop(0, color);
+                wingGrad.addColorStop(0.5, lerpColor(color, "#ffffff", 0.3));
+                wingGrad.addColorStop(1, lerpColor(color, "#000000", 0.15));
+                
+                ctx.fillStyle = wingGrad;
+                ctx.beginPath();
+                // جناح صغير محسن
+                ctx.moveTo(0, 0);
+                
+                // الحافة الأمامية
+                ctx.bezierCurveTo(-8, -15, -20, -18, -28, -15);
+                
+                // طرف الجناح المدور
+                ctx.bezierCurveTo(-35, -12, -37, -6, -35, 0);
+                
+                // الحافة الخلفية
+                ctx.bezierCurveTo(-33, 8, -20, 12, -8, 10);
+                
+                // العودة
+                ctx.lineTo(0, 0);
+                ctx.fill();
+                
+                // تفاصيل ريش بسيطة
+                ctx.strokeStyle = "rgba(255,255,255,0.4)";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-5, 2); ctx.lineTo(-18, 8);
+                ctx.moveTo(-8, -2); ctx.lineTo(-22, 4);
+                ctx.stroke();
+
+                ctx.restore();
+            },
+            
+            drawBird(ctx, type, r, frames, vel) {
+                ctx.save();
+                ctx.scale(r/20, r/20); 
+                ctx.translate(-50, -50);
+                const wingMove = Math.sin(frames * 0.4) * 0.8;
+                
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = "rgba(0,0,0,0.25)";
+                ctx.shadowOffsetX = 3;
+                ctx.shadowOffsetY = 3;
+
+                switch(type) {
+                    case 'canary':
+                        // جسم بيضاوي متناسق
+                        let bG = ctx.createRadialGradient(40, 40, 8, 50, 50, 50);
+                        bG.addColorStop(0, "#fff59d"); bG.addColorStop(0.6, "#fbc02d"); bG.addColorStop(1, "#f57f17");
+                        ctx.fillStyle = bG;
+                        ctx.beginPath();
+                        ctx.ellipse(50, 50, 38, 30, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // رأس
+                        ctx.beginPath();
+                        ctx.ellipse(68, 42, 18, 16, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // عين
+                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(75, 38, 10, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(77, 38, 6, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(79, 36, 2, 0, Math.PI*2); ctx.fill();
+                        
+                        // منقار
+                        ctx.fillStyle = "#e65100";
+                        ctx.beginPath();
+                        ctx.moveTo(85, 42); ctx.lineTo(92, 44); ctx.lineTo(92, 48); ctx.lineTo(85, 46);
+                        ctx.fill();
+                        
+                        // جناح في المنتصف
+                        this.drawSleekWing(ctx, "#fff176", wingMove, 50, 50, vel);
+                        break;
+
+                    case 'dove':
+                        // جسم ناصع
+                        ctx.fillStyle = "white";
+                        ctx.beginPath();
+                        ctx.ellipse(50, 50, 36, 28, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // رأس
+                        ctx.beginPath();
+                        ctx.ellipse(68, 42, 16, 14, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // عين
+                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(74, 38, 4, 0, Math.PI*2); ctx.fill();
+                        
+                        // منقار
+                        ctx.fillStyle = "#ff9800";
+                        ctx.beginPath();
+                        ctx.moveTo(82, 44); ctx.lineTo(88, 45); ctx.lineTo(88, 49); ctx.lineTo(82, 48);
+                        ctx.fill();
+                        
+                        // جناح في المنتصف
+                        this.drawSleekWing(ctx, "#f5f5f5", wingMove * 0.6, 50, 50, vel);
+                        break;
+
+                    case 'owl':
+                        // جسم
+                        ctx.fillStyle = "#5d4037";
+                        ctx.beginPath();
+                        ctx.ellipse(50, 50, 44, 42, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // قرص الوجه
+                        ctx.fillStyle = "#8d6e63";
+                        ctx.beginPath();
+                        ctx.ellipse(50, 40, 32, 28, 0, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // عيون
+                        ctx.fillStyle = "#fff9c4"; 
+                        ctx.beginPath(); ctx.arc(35, 35, 16, 0, Math.PI*2); 
+                        ctx.arc(65, 35, 16, 0, Math.PI*2); 
+                        ctx.fill();
+                        
+                        // حدقة
+                        ctx.fillStyle = "black"; 
+                        ctx.beginPath(); ctx.arc(35, 35, 9, 0, Math.PI*2); 
+                        ctx.arc(65, 35, 9, 0, Math.PI*2); 
+                        ctx.fill();
+                        
+                        // وميض
+                        ctx.fillStyle = "#ffc107"; 
+                        ctx.beginPath(); ctx.arc(37, 33, 3, 0, Math.PI*2); 
+                        ctx.arc(67, 33, 3, 0, Math.PI*2); 
+                        ctx.fill();
+                        
+                        // منقار
+                        ctx.fillStyle = "#ff9800";
+                        ctx.beginPath(); 
+                        ctx.moveTo(48, 55); ctx.lineTo(50, 62); ctx.lineTo(52, 55);
+                        ctx.fill();
+                        
+                        // جناح في المنتصف
+                        this.drawSleekWing(ctx, "#8d6e63", wingMove * 0.8, 50, 50, vel);
+                        break;
+
+                    case 'falcon':
+                        // جسم
+                        let fG = ctx.createLinearGradient(0, 25, 0, 75);
+                        fG.addColorStop(0, "#546e7a"); fG.addColorStop(1, "#37474f");
+                        ctx.fillStyle = fG;
+                        ctx.beginPath();
+                        ctx.moveTo(15, 48); 
+                        ctx.bezierCurveTo(20, 30, 75, 25, 92, 45);
+                        ctx.bezierCurveTo(98, 65, 60, 78, 15, 48);
+                        ctx.fill();
+                        
+                        // رأس
+                        ctx.beginPath();
+                        ctx.moveTo(75, 42); ctx.lineTo(88, 40); ctx.lineTo(92, 48); ctx.lineTo(85, 50);
+                        ctx.fill();
+                        
+                        // عين
+                        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(78, 42, 7, 0, Math.PI*2); ctx.fill();
+                        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(80, 42, 4, 0, Math.PI*2); ctx.fill();
+                        
+                        // منقار
+                        ctx.fillStyle = "#ffeb3b";
+                        ctx.beginPath();
+                        ctx.moveTo(88, 42); ctx.lineTo(105, 40); ctx.lineTo(102, 48); ctx.lineTo(88, 46);
+                        ctx.fill();
+                        
+                        // جناح في المنتصف
+                        this.drawSleekWing(ctx, "#455a64", wingMove * 1.2, 50, 50, vel);
+                        break;
+                }
+                ctx.restore();
+            },
+            
+            drawPipe(ctx, x, y, w, h, isTop, themeIdx, nextThemeIdx, progress) {
+                const colors = [['#2e7d32', '#66bb6a', '#1b5e20'], ['#37474f', '#78909c', '#263238'], ['#ef6c00', '#ffb74d', '#bf360c'], ['#d81b60', '#f48fb1', '#880e4f'], ['#c62828', '#ef5350', '#7f0000'], ['#512da8', '#9575cd', '#311b92'], ['#1b5e20', '#43a047', '#002808'], ['#1a237e', '#5c6bc0', '#0d47a1']];
+                const c1 = colors[themeIdx % colors.length];
+                const c2 = colors[nextThemeIdx % colors.length];
+                const curMain = lerpColor(c1[0], c2[0], progress);
+                const curLight = lerpColor(c1[1], c2[1], progress);
+                const curDark = lerpColor(c1[2], c2[2], progress);
+
+                let grad = ctx.createLinearGradient(x, 0, x + w, 0);
+                grad.addColorStop(0, curMain); grad.addColorStop(0.3, curLight); grad.addColorStop(1, curMain);
+                ctx.fillStyle = grad; ctx.fillRect(x, isTop ? 0 : y, w, isTop ? y : h);
+                const capH = 40; const capX = x - 6; const capW = w + 12; const capY = isTop ? y - capH : y;
+                ctx.fillStyle = curDark; ctx.fillRect(capX, capY, capW, capH);
+                ctx.fillStyle = grad; ctx.fillRect(capX + 2, capY + 2, capW - 4, capH - 4);
+                ctx.fillStyle = "rgba(255,255,255,0.15)";
+                ctx.fillRect(x + w * 0.1, isTop ? 0 : y, w * 0.1, isTop ? y : h);
+            }
+        };
+
+        const Themes = [
+            { nameAr: "وادي الربيع", nameEn: "Spring Valley", flag: "☀️", bg: ["#81d4fa", "#29b6f6"], floor: "#2e7d32", draw(ctx, w, h, f) {
+                ctx.fillStyle = "rgba(255,255,255,0.7)";
+                for(let i=0; i<3; i++) {
+                    let x = (((i*600) + f*0.4) % (w+400) + (w+400)) % (w+400) - 200;
+                    ctx.beginPath(); ctx.arc(x, 80 + i*40, 25, 0, Math.PI*2); ctx.arc(x+30, 80 + i*40, 35, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.fillStyle = "#1b5e20";
+                for(let i=0; i<5; i++) {
+                    let lx = (((i*400) - f*1.2) % (w+300) + (w+300)) % (w+300) - 150;
+                    ctx.beginPath(); ctx.moveTo(lx, h-20); ctx.lineTo(lx+50, h-150); ctx.lineTo(lx+100, h-20); ctx.fill();
+                }
+            }},
+            { nameAr: "نيويورك", nameEn: "New York", flag: "🇺🇸", bg: ["#0a192f", "#112240"], floor: "#1a1a1a", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#020c1b";
+                for(let i=0; i<8; i++) {
+                    let lx = (((i*250) - f*1.5) % (w+200) + (w+200)) % (w+200) - 100;
+                    ctx.fillRect(lx, h - (150 + (i%5)*100), 110, 500);
+                }
+            }},
+            { nameAr: "الجيزة مصر", nameEn: "Giza Egypt", flag: "🇪🇬", bg: ["#fb8c00", "#f4511e"], floor: "#5d4037", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#3e2723";
+                for(let i=0; i<2; i++) {
+                    let lx = (((i*1200) - f*0.9) % (w+900) + (w+900)) % (w+900) - 450;
+                    ctx.beginPath(); ctx.moveTo(lx, h-20); ctx.lineTo(lx+350, h-380); ctx.lineTo(lx+700, h-20); ctx.fill();
+                }
+            }},
+            { nameAr: "طوكيو اليابان", nameEn: "Tokyo Japan", flag: "🇯🇵", bg: ["#fce4ec", "#f8bbd0"], floor: "#c2185b", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#880e4f";
+                for(let i=0; i<3; i++) {
+                    let tx = (((i*500) - f*1.2) % (w+400) + (w+400)) % (w+400) - 150;
+                    ctx.fillRect(tx, h-160, 100, 25); ctx.fillRect(tx+15, h-160, 12, 160); ctx.fillRect(tx+73, h-160, 12, 160);
+                }
+            }},
+            { nameAr: "بكين الصين", nameEn: "Beijing China", flag: "🇨🇳", bg: ["#b71c1c", "#d32f2f"], floor: "#3e0000", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#ffeb3b";
+                for(let i=0; i<6; i++) {
+                    let lx = (((i*350) - f*2) % (w+250) + (w+250)) % (w+250) - 100;
+                    ctx.beginPath(); ctx.ellipse(lx, 150 + Math.sin(f*0.02+i)*40, 25, 35, 0, 0, Math.PI*2); ctx.fill();
+                }
+            }},
+            { nameAr: "باريس فرنسا", nameEn: "Paris France", flag: "🇫🇷", bg: ["#4a148c", "#7b1fa2"], floor: "#1a0033", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#000000";
+                let ex = (((w/2) - f*0.7) % (w+600) + (w+600)) % (w+600) - 300;
+                ctx.beginPath(); ctx.moveTo(ex, h-20); ctx.lineTo(ex+150, h-550); ctx.lineTo(ex+300, h-20); ctx.fill();
+            }},
+            { nameAr: "رياض العز", nameEn: "Riyadh KSA", flag: "🇸🇦", bg: ["#004d40", "#00695c"], floor: "#00241a", draw(ctx, w, h, f) {
+                ctx.fillStyle = "#00c853";
+                let kx = (((w/2) - f*0.8) % (w+400) + (w+400)) % (w+400) - 200;
+                ctx.fillRect(kx, h-450, 120, 450); ctx.fillStyle="#00241a"; ctx.beginPath(); ctx.arc(kx+60, h-400, 40, 0, Math.PI*2); ctx.fill();
+            }},
+            { nameAr: "الفضاء البعيد", nameEn: "Deep Space", flag: "🚀", bg: ["#0d47a1", "#010a1a"], floor: "#1a237e", draw(ctx, w, h, f) {
+                for(let i=0; i<40; i++) {
+                    ctx.fillStyle = "white"; ctx.globalAlpha = Math.random() * 0.8 + 0.2;
+                    ctx.beginPath(); ctx.arc((i*197)%w, (i*351)%h, 1.5, 0, Math.PI*2); ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            }}
+        ];
+
+        const Skins = [
+            { id: 'canary', nameAr: 'كناري', nameEn: 'Canary', lock: 0, icon: '🐥' },
+            { id: 'dove', nameAr: 'حمامة', nameEn: 'Dove', lock: 30, icon: '🕊️' },
+            { id: 'owl', nameAr: 'بومة', nameEn: 'Owl', lock: 80, icon: '🦉' },
+            { id: 'falcon', nameAr: 'صقر', nameEn: 'Falcon', lock: 120, icon: '🦅' }
+        ];
+
+        const Game = {
+            canvas: document.getElementById('gameCanvas'), ctx: null,
+            state: 'MENU', frames: 0, score: 0, best: 0,
+            bird: { y: 0, v: 0, r: 15, skin: 'canary' }, 
+            pipes: [], themeIdx: 0, nextThemeIdx: 0, themeProgress: 0, trans: 0,
+            speed: 4.2, gap: 215,
+
+            init() {
+                this.ctx = this.canvas.getContext('2d');
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.best = Storage.get('fw_best_global_pro_v2', 0);
+                Lang.init(); AudioSys.init();
+                const act = (e) => {
+                    if(e.type === 'keydown' && e.code !== 'Space') return;
+                    if(this.state === 'PLAYING') { this.bird.v = -7.5; AudioSys.play(450, 'triangle', 0.1); }
+                    if(this.state === 'GAMEOVER') this.start();
+                };
+                window.addEventListener('keydown', act);
+                this.canvas.addEventListener('mousedown', act);
+                this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); act(e); }, {passive: false});
+                this.loop();
+            },
+            resize() { this.w = this.canvas.width = window.innerWidth; this.h = this.canvas.height = window.innerHeight; },
+            reset() {
+                this.bird.y = this.h / 2; this.bird.v = 0;
+                this.pipes = []; this.score = 0; this.frames = 0;
+                this.themeIdx = 0; this.nextThemeIdx = 0; this.themeProgress = 0; this.trans = 0;
+                this.speed = 4.2; this.gap = 215;
+                document.getElementById('scoreDisplay').innerText = 0;
+                this.updateHud();
+            },
+            updateHud() {
+                const t = Themes[this.nextThemeIdx];
+                document.getElementById('hudFlag').innerText = t.flag;
+                document.getElementById('hudLocName').innerText = (Lang.curr === 'ar' ? t.nameAr : t.nameEn);
+            },
+            start() { this.reset(); this.state = 'PLAYING'; UI.showHUD(); },
+            gameOver() {
+                if(this.state === 'GAMEOVER') return;
+                this.state = 'GAMEOVER';
+                AudioSys.play(80, 'sawtooth', 0.8);
+                if(this.score > this.best) { this.best = this.score; Storage.set('fw_best_global_pro_v2', this.best); }
+                UI.showGameOver(this.score, this.best);
+            },
+            update() {
+                this.frames++;
+                this.speed = 4.2 + (this.score * 0.05);
+                this.gap = Math.max(165, 215 - (this.score * 0.7));
+
+                if(this.themeIdx !== this.nextThemeIdx) {
+                    this.themeProgress += 0.008;
+                    if(this.themeProgress >= 1) { this.themeIdx = this.nextThemeIdx; this.themeProgress = 0; }
+                }
+
+                this.bird.v += 0.42; this.bird.y += this.bird.v;
+                let spawnInterval = Math.max(70, 100 - (this.score * 0.5));
+                if(this.frames % Math.floor(spawnInterval) === 0) {
+                    const py = Math.random() * (this.h - this.gap - 300) + 150;
+                    this.pipes.push({ x: this.w, y: py, gap: this.gap, passed: false });
+                }
+
+                for(let i=0; i<this.pipes.length; i++) {
+                    let p = this.pipes[i]; p.x -= this.speed;
+                    const bx = 70, by = this.bird.y, br = this.bird.r - 2;
+                    if(bx + br > p.x && bx - br < p.x + 95) {
+                        if(by - br < p.y || by + br > p.y + p.gap) this.gameOver();
+                    }
+                    if(p.x + 95 < bx && !p.passed) {
+                        p.passed = true; this.score++; AudioSys.play(950, 'sine', 0.1);
+                        document.getElementById('scoreDisplay').innerText = this.score;
+                        if(this.score > 0 && this.score % 10 === 0) {
+                            this.nextThemeIdx = (this.themeIdx + 1) % Themes.length;
+                            this.trans = 120;
+                            this.updateHud();
+                            UI.toast(Themes[this.nextThemeIdx].flag + " " + (Lang.curr === 'ar' ? Themes[this.nextThemeIdx].nameAr : Themes[this.nextThemeIdx].nameEn));
+                        }
+                    }
+                    if(p.x < -150) this.pipes.splice(i--, 1);
+                }
+                if(this.bird.y > this.h - 20 || this.bird.y < 0) this.gameOver();
+                if(this.trans > 0) this.trans--;
+            },
+            draw() {
+                const t1 = Themes[this.themeIdx] || Themes[0];
+                const t2 = Themes[this.nextThemeIdx] || Themes[0];
+                const p = this.themeProgress;
+
+                const bg1 = lerpColor(t1.bg[0], t2.bg[0], p);
+                const bg2 = lerpColor(t1.bg[1], t2.bg[1], p);
+                const floor = lerpColor(t1.floor, t2.floor, p);
+
+                const grd = this.ctx.createLinearGradient(0,0,0,this.h);
+                grd.addColorStop(0, bg1); grd.addColorStop(1, bg2);
+                this.ctx.fillStyle = grd; this.ctx.fillRect(0,0,this.w,this.h);
+
+                this.ctx.globalAlpha = 1 - p; t1.draw(this.ctx, this.w, this.h, this.frames);
+                this.ctx.globalAlpha = p; t2.draw(this.ctx, this.w, this.h, this.frames);
+                this.ctx.globalAlpha = 1;
+
+                this.pipes.forEach(pp => {
+                    Renderer.drawPipe(this.ctx, pp.x, pp.y, 95, this.h, true, this.themeIdx, this.nextThemeIdx, p);
+                    Renderer.drawPipe(this.ctx, pp.x, pp.y + pp.gap, 95, this.h, false, this.themeIdx, this.nextThemeIdx, p);
+                });
+                
+                this.ctx.fillStyle = floor; this.ctx.fillRect(0, this.h - 20, this.w, 20);
+                
+                if(this.state !== 'MENU') {
+                    this.ctx.save(); this.ctx.translate(70, this.bird.y);
+                    let rotation = Math.max(-0.6, Math.min(0.6, this.bird.v * 0.12));
+                    this.ctx.rotate(rotation);
+                    Renderer.drawBird(this.ctx, this.bird.skin, this.bird.r, this.frames, this.bird.v);
+                    this.ctx.restore();
+                }
+
+                if(this.trans > 0) {
+                    this.ctx.fillStyle = `rgba(255,255,255,${this.trans/120})`;
+                    this.ctx.font = `900 56px ${Lang.curr==='ar'?'Cairo':'Fredoka'}`; this.ctx.textAlign = "center";
+                    const tName = Lang.curr==='ar' ? Themes[this.nextThemeIdx].nameAr : Themes[this.nextThemeIdx].nameEn;
+                    this.ctx.fillText(Themes[this.nextThemeIdx].flag + " " + tName, this.w/2, this.h/2);
+                }
+            },
+            loop() { if(this.state === 'PLAYING') this.update(); this.draw(); requestAnimationFrame(() => this.loop()); }
+        };
+
+        const UI = {
+            hideAll() { document.querySelectorAll('.ui-screen').forEach(s => s.classList.add('hidden-screen')); },
+            showMenu() { this.hideAll(); document.getElementById('mainMenu').classList.remove('hidden-screen'); Game.state = 'MENU'; },
+            showHUD() { this.hideAll(); document.getElementById('hud').classList.remove('hidden'); document.getElementById('bestScoreDisplay').innerText = Game.best; },
+            showGameOver(s, b) { document.getElementById('goScore').innerText = s; document.getElementById('goBest').innerText = b; document.getElementById('gameOverScreen').classList.remove('hidden-screen'); },
+            showSkins() {
+                this.hideAll(); const grid = document.getElementById('skinsGrid'); grid.innerHTML = '';
+                document.getElementById('skinPts').innerText = Game.best + " PTS";
+                Skins.forEach(s => {
+                    const locked = Game.best < s.lock; const active = Game.bird.skin === s.id;
+                    const item = document.createElement('div');
+                    item.className = `p-6 glass-card flex items-center justify-between border-2 transition-all ${active?'border-yellow-400 scale-[1.03] shadow-yellow-500/20':'border-transparent'} ${locked?'opacity-50 grayscale':'hover:bg-white/5 cursor-pointer hover:scale-[1.02]'}`;
+                    item.innerHTML = `<div class="flex items-center gap-6"><div class="text-5xl filter drop-shadow-lg">${s.icon}</div><div><div class="text-white font-black text-xl">${Lang.curr==='ar'?s.nameAr:s.nameEn}</div><div class="text-[12px] text-slate-400 font-bold mt-1">${locked?Lang.dict[Lang.curr].unlockAt+s.lock:Lang.dict[Lang.curr].available}</div></div></div><div class="text-3xl">${locked?'🔒':(active?'✅':'🎯')}</div>`;
+                    if(!locked) item.onclick = () => { Game.bird.skin = s.id; AudioSys.play(800, 'sine', 0.05); UI.showSkins(); };
+                    grid.appendChild(item);
+                });
+                document.getElementById('skinsScreen').classList.remove('hidden-screen');
+            },
+            showSettings() { this.hideAll(); document.getElementById('settingsScreen').classList.remove('hidden-screen'); AudioSys.updateUI(); },
+            toast(msg) {
+                const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = Lang.dict[Lang.curr].location + msg;
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 3500);
+            }
+        };
+
+        window.onload = () => Game.init();
+    </script>
+</body>
+</html>
