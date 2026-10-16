@@ -25,6 +25,15 @@ test('AABB is strict at edges and detects even a one-pixel overlap', () => {
   assert.equal(overlaps(a, { x: 19, y: 19, width: 5, height: 5 }), true);
   assert.equal(overlaps(a, { x: 5, y: 5, width: 1, height: 1 }), true);
 });
+test('touch particles follow the pointer and respect reduced motion', () => {
+  const engine = createEngine('gardens', false);
+  steer(engine, 100, true, 250);
+  assert.equal(engine.particles.length, 3);
+  assert.ok(engine.particles.every(p => p.x === 100 && p.y === 250));
+  engine.reducedMotion = true;
+  steer(engine, 200, true, 300);
+  assert.equal(engine.particles.length, 3);
+});
 test('colliding with a textured pillar ends a run once', () => {
   const engine = createEngine('gardens', false); startFlight(engine);
   const gate = engine.gates[0]!; gate.y = engine.bird.y - 50;

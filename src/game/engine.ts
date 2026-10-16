@@ -35,11 +35,11 @@ export const gateBounds = (gate: Gate): [Rect, Rect] => [
   { x: 0, y: gate.y, width: gate.gap - gate.opening / 2, height: gate.height },
   { x: gate.gap + gate.opening / 2, y: gate.y, width: WIDTH - gate.gap - gate.opening / 2, height: gate.height },
 ];
-export function steer(state: Engine, x: number, touch = false) {
+export function steer(state: Engine, x: number, touch = false, touchY = state.bird.y + 80) {
   if (state.phase !== 'ready' && state.phase !== 'playing') return;
   if (!Number.isFinite(x)) return;
   state.bird.target = Math.max(22, Math.min(WIDTH - 22, x));
-  if (touch && !state.reducedMotion) burst(state, state.bird.target, state.bird.y + 80, 3, 'touch');
+  if (touch && !state.reducedMotion && Number.isFinite(touchY)) burst(state, state.bird.target, Math.max(0, Math.min(HEIGHT, touchY)), 3, 'touch');
 }
 export function startFlight(state: Engine) { if (state.phase === 'ready') state.phase = 'playing'; }
 export function pauseFlight(state: Engine) {

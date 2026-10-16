@@ -52,7 +52,11 @@ npm run build:web
 npx expo export --platform all
 ```
 
-Tests cover fixed-step determinism, AABB boundaries, collection, pause/resume, intro transitions, long-run entity bounds, saved-data validation, reward accounting, and unlock rules. CI runs these checks and exports all platform bundles. Native device/simulator tests and performance profiling are still required before app-store release.
+Tests cover fixed-step determinism, AABB boundaries, collection, pause/resume, intro transitions, long-run entity bounds, touch particles, saved-data validation, reward accounting, and unlock rules. A headless CanvasKit smoke test rasterizes the actual painter in four scene states. CI runs these checks and exports all platform bundles. Native device/simulator tests and performance profiling are still required before app-store release.
+
+### Dependency release gate
+
+The current Expo SDK 54 dependency tree reports 36 audit findings (12 moderate, 24 high), including upstream `braces`, `image-size`, `node-forge`, `postcss`, `sprintf-js`, and `uuid` advisories. `npm audit fix` was applied; the remaining suggested fixes include incompatible Expo/React Native changes or have no patched version in the current dependency range. Do not use `npm audit fix --force` blindly. Review the latest audit and an SDK-compatible upgrade before distributing a production release. The application does not accept remote assets or third-party patterns, but that is not a substitute for resolving dependency advisories.
 
 ## Assets
 

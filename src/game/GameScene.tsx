@@ -90,8 +90,8 @@ export default function GameScene({ world, wing, best, settings, storyOnly, onEx
 
   const pan = useMemo(() => Gesture.Pan().minDistance(0).runOnJS(true).onBegin(event => {
     if (engine.current.phase === 'ready' && !storyOnly) startFlight(engine.current);
-    steer(engine.current, event.x / scale, true); syncHUD();
-  }).onUpdate(event => steer(engine.current, event.x / scale, true)), [scale, storyOnly, syncHUD]);
+    steer(engine.current, event.x / scale, true, event.y / scale); syncHUD();
+  }).onUpdate(event => steer(engine.current, event.x / scale, true, event.y / scale)), [scale, storyOnly, syncHUD]);
   const isReady = hud.phase === 'ready';
   const isOver = hud.phase === 'gameover';
   const isPaused = hud.phase === 'paused';
