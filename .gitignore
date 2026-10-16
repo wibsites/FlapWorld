@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+.DS_Store
+*.tsbuildinfo
+artifacts/
+assets/bird-source.png
+assets/bio-city.png
+public/canvaskit.wasm
